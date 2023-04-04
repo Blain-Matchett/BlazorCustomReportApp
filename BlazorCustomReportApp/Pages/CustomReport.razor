@@ -98,37 +98,37 @@
         string cols = "";
         List<string> NavProps = new List<string>();
 
-        //1. get top level query.
-        foreach(var item in SelectedColumns)
+        //1. get top level select/query.
+        foreach(var column in SelectedColumns)
         {
-            if(item.NavigationProperty.HasValue())
+            if(column.NavigationProperty.HasValue())
             {
-                if(!NavProps.Contains(item.NavigationProperty))
+                if(!NavProps.Contains(column.NavigationProperty))
                 {
-                    cols += "x." + item.NavigationProperty.Trim() + ", ";
-                    NavProps.Add(item.NavigationProperty);
+                    cols += "x." + column.NavigationProperty.Trim() + ", ";
+                    NavProps.Add(column.NavigationProperty);
                 }
 
             }
             else
             {
                 //cols += "x." + item.PropertyName.Trim() + ", ";
-                if(item.PropertyName.Contains("."))
+                if(column.PropertyName.Contains("."))
                 {
-                    cols += "x." + item.PropertyName.Trim() + " as " + item.ID + ", ";
+                    cols += "x." + column.PropertyName.Trim() + " as " + column.ID + ", ";
                 }
                 else
                 {
-                    cols += "x." + item.PropertyName.Trim() + ", ";    
+                    cols += "x." + column.PropertyName.Trim() + ", ";    
                 }
 
-                if(item.PropertyName.Contains("."))
+                if(column.PropertyName.Contains("."))
                 {
-                    topCols += "x." + item.ID + ", ";
+                    topCols += "x." + column.ID + ", ";
                 }
                 else
                 {
-                    topCols += "x." + item.PropertyName.Trim() + ", ";    
+                    topCols += "x." + column.PropertyName.Trim() + ", ";    
                 }
 
             }
@@ -142,7 +142,6 @@
 
 
         //begin flattening loop
-
         foreach(var prop in navigationProperities)
         {
             string topColsTemp = "";
@@ -207,13 +206,13 @@
     public class Report
     {
 
-        public string StoreNumber { get; set; }
-        public string StoreName { get; set; }
-        public string Province { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string Phone { get; set; }
-        public string ProductDesc { get; set; }
+        public string? StoreNumber { get; set; }
+        public string? StoreName { get; set; }
+        public string? Province { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? Phone { get; set; }
+        public string? ProductDesc { get; set; }
         public decimal? ProductPrice { get; set; }
         public double? ProductOnHand { get; set; }
     }

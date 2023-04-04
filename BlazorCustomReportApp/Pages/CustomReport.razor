@@ -3,6 +3,7 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Linq.Dynamic.Core
 @using System.Text
+@using Telerik.Blazor.Components
 @using Telerik.DataSource.Extensions
 @inject IJSRuntime JsRuntime
 @inject DevContext devContext
@@ -10,13 +11,54 @@
 
 <h3 align="center">Custom Report</h3>
 
+<TelerikGrid TItem="@Report"
+             OnRead="@ReadItems"
+             Pageable="true" PageSize="15">
+    <GridColumns>
+        @foreach (var column in SelectedColumns)
+        {
+            <GridColumn Field="@column.ID" Title="@column.FriendlyName"/>
+        }
+    </GridColumns>
+</TelerikGrid>
+
+<br />
+
+<TelerikGrid Data="@SelectedColumns"
+             Pageable="true" PageSize="15">
+    <GridColumns>
+        <GridColumn Field="ID"/>
+        <GridColumn Field="PropertyName"/>
+        <GridColumn Field="FriendlyName"/>
+        <GridColumn Field="NavigationProperty"/>
+    </GridColumns>
+</TelerikGrid>
+
 @code {
     private Store[]? Stores { get; set; }
-    private List<ColumnDescriptor> AvailableColumns;
-    public List<ColumnDescriptor> SelectedColumns;
+    private List<ColumnDescriptor> AvailableColumns { get; set; } = new List<ColumnDescriptor>();
+    public List<ColumnDescriptor> SelectedColumns { get; set; } = new List<ColumnDescriptor>();
+
+
+    protected async Task ReadItems(GridReadEventArgs args)
+    {
+        if (SelectedColumns.Count == 0)
+        {
+            return;
+        }
+
+        var query = GenerateReport();
+        var dataSourceResult = await query.ToDataSourceResultAsync(args.Request);
+
+        args.Data = dataSourceResult.Data;
+        args.Total = dataSourceResult.Total;
+    }
 
     protected override async Task OnInitializedAsync()
     {
+
+        LoadAvailableColumnsObject();
+        //GenerateReport();
 
         //var Stores = await devContext.Store.ToArrayAsync();
 
@@ -24,17 +66,149 @@
         //.SelectMany(x => x.StoreEmployee.DefaultIfEmpty(), (x,y) => new { x.StoreNumber, x.StoreName, x.Province.ProvinceName, y.FirstName, y.LastName, y.Phone, })
         //.ToList();
 
+        //AvailableColumns = new List<ColumnDescriptor>()
+        //{
+        //    new ColumnDescriptor() { ID = "StoreNum", PropertyName = "StoreNumber", FriendlyName = "Store Num" },
+        //    new ColumnDescriptor() { ID = "StoreName", PropertyName = "StoreName", FriendlyName = "Store Name" },
+        //    new ColumnDescriptor() { ID = "Province", PropertyName = "Province.ProvinceName", FriendlyName = "Province" },
+        //    new ColumnDescriptor() { ID = "FirstName", PropertyName = "FirstName", FriendlyName = "First Name", NavigationProperty = "StoreEmployee" },
+        //    new ColumnDescriptor() { ID = "LastName", PropertyName = "LastName", FriendlyName = "Last Name", NavigationProperty = "StoreEmployee" },
+        //    new ColumnDescriptor() { ID = "Phone", PropertyName = "Phone", FriendlyName = "Phone", NavigationProperty = "StoreEmployee" },
+        //    new ColumnDescriptor() { ID = "ProductDesc", PropertyName = "ProductDesc", FriendlyName = "Product Desc", NavigationProperty = "StoreProduct" },
+        //    new ColumnDescriptor() { ID = "ProductPrice", PropertyName = "ProductPrice", FriendlyName = "Price", NavigationProperty = "StoreProduct" },
+        //    new ColumnDescriptor() { ID = "ProductOnHand", PropertyName = "ProductOnHand", FriendlyName = "Qty", NavigationProperty = "StoreProduct" },
+
+        //    //new ColumnDescriptor() { ID = "ClientID", PropertyName = "ClientID", FriendlyName = "Client ID" },
+        //    //new ColumnDescriptor() { ID = "ImmigrationStatus", PropertyName = "ImmigrationStatus.Desc1", FriendlyName = "Immigration Status" },
+        //    //new ColumnDescriptor() { ID = "DOB", PropertyName = "DOB", FriendlyName = "Birthdate", DisplayFormat="{0:d}" },
+        //    //new ColumnDescriptor() { ID = "FamilyFirstName", PropertyName = "FirstName", FriendlyName = "Family First Name", NavigationProperty = "TBClientFamilies" },
+        //    //new ColumnDescriptor() { ID = "FamilyLastName", PropertyName = "LastName", FriendlyName = "Family Last Name", NavigationProperty = "TBClientFamilies" },
+        //    //new ColumnDescriptor() { ID = "ClientNeedComment", PropertyName = "Comment", FriendlyName = "Client Need Comment", NavigationProperty = "TBClientNeeds" },
+        //};
+
+        //SelectedColumns = AvailableColumns.ToList();
+
+        //var navigationProperities = SelectedColumns
+        //    .Where(c => c.NavigationProperty.HasValue())
+        //    .Select(c => c.NavigationProperty)
+        //    .Distinct()
+        //    .ToList();
+
+        //string topCols = "";
+        //string cols = "";
+        //List<string> NavProps = new List<string>();
+
+        ////1. get top level query.
+        //foreach(var item in SelectedColumns)
+        //{
+        //    if(item.NavigationProperty.HasValue())
+        //    {
+        //        if(!NavProps.Contains(item.NavigationProperty))
+        //        {
+        //            cols += "x." + item.NavigationProperty.Trim() + ", ";
+        //            NavProps.Add(item.NavigationProperty);
+        //        }
+
+        //    }
+        //    else
+        //    {
+        //        //cols += "x." + item.PropertyName.Trim() + ", ";
+        //        if(item.PropertyName.Contains("."))
+        //        {
+        //            cols += "x." + item.PropertyName.Trim() + " as " + item.ID + ", ";
+        //        }
+        //        else
+        //        {
+        //            cols += "x." + item.PropertyName.Trim() + ", ";    
+        //        }
+
+        //        if(item.PropertyName.Contains("."))
+        //        {
+        //            topCols += "x." + item.ID + ", ";
+        //        }
+        //        else
+        //        {
+        //            topCols += "x." + item.PropertyName.Trim() + ", ";    
+        //        }
+
+        //    }
+        //}
+
+        //string s1 = "x => new {" + cols + "}";
+
+        //var q1 = devContext.Store.Select(s1);
+
+
+        ////begin flattening loop
+
+        //foreach(var prop in navigationProperities)
+        //{
+        //    string topColsTemp = "";
+        //    string flatCols = "";
+
+        //    //1. get a list of the fields from selected columns where navigation property matches the prop variable
+        //    var NavPropList = SelectedColumns.Where(x => x.NavigationProperty == prop).ToList();
+        //    foreach(var NavProp in NavPropList )
+        //    {
+        //        flatCols += "y." + NavProp.PropertyName + ",";
+        //        topColsTemp += "x." + NavProp.PropertyName + ",";
+
+        //    }
+
+        //    //2. add all nav prop that aren't the current one to the end flatCols variable.
+        //    var otherNavProps = navigationProperities.Where(x => x != prop).ToList();
+        //    foreach(var otherProp in otherNavProps)
+        //    {
+        //        flatCols += "x." + otherProp + ",";
+        //    }
+
+        //    //3. define flatten spec for this query.
+        //    string select1 = prop + ".DefaultIfEmpty()";
+        //    string select2 = " new {" + topCols + flatCols + "}";
+        //    q1 = q1.SelectMany(select1, select2);
+
+        //    topCols += topColsTemp;
+    //}
+    }
+
+    private async Task Test()
+    {
+
+        //Stores = await devContext.Store.ToArrayAsync();
+
+        var config = new ParsingConfig { AllowNewToEvaluateAnyType = true };
+
+        var select1 = await devContext.Store
+        .Select(x => new { x.StoreNumber, x.StoreName, x.Province, x.StoreEmployee })
+        .SelectMany(x => x.StoreEmployee.DefaultIfEmpty())
+        .ToListAsync();
+
+
+        //1. get all top level fields
+        //   get all 1 to 1 fields
+        //   get all collections.
+
+        JsRuntime.InvokeVoidAsync("alert", "Warning!");
+
+        //bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?"); // Confirm
+        //string prompted = await JsRuntime.InvokeAsync<string>("prompt", "Take some input:"); // Prompt
+    }
+
+
+    //Load Available Columns Object
+    protected void LoadAvailableColumnsObject()
+    {
         AvailableColumns = new List<ColumnDescriptor>()
         {
-            new ColumnDescriptor() { ID = "StoreNum", PropertyName = "StoreNumber", FriendlyName = "Store Num" },
+            new ColumnDescriptor() { ID = "StoreNumber", PropertyName = "StoreNumber", FriendlyName = "Store Num" },
             new ColumnDescriptor() { ID = "StoreName", PropertyName = "StoreName", FriendlyName = "Store Name" },
             new ColumnDescriptor() { ID = "Province", PropertyName = "Province.ProvinceName", FriendlyName = "Province" },
             new ColumnDescriptor() { ID = "FirstName", PropertyName = "FirstName", FriendlyName = "First Name", NavigationProperty = "StoreEmployee" },
             new ColumnDescriptor() { ID = "LastName", PropertyName = "LastName", FriendlyName = "Last Name", NavigationProperty = "StoreEmployee" },
             new ColumnDescriptor() { ID = "Phone", PropertyName = "Phone", FriendlyName = "Phone", NavigationProperty = "StoreEmployee" },
             new ColumnDescriptor() { ID = "ProductDesc", PropertyName = "ProductDesc", FriendlyName = "Product Desc", NavigationProperty = "StoreProduct" },
-            new ColumnDescriptor() { ID = "ProductPrice", PropertyName = "ProductPrice", FriendlyName = "Price", NavigationProperty = "StoreProduct" },
-            new ColumnDescriptor() { ID = "ProductOnHand", PropertyName = "ProductOnHand", FriendlyName = "Qty", NavigationProperty = "StoreProduct" },
+            //new ColumnDescriptor() { ID = "ProductPrice", PropertyName = "ProductPrice", FriendlyName = "Price", NavigationProperty = "StoreProduct" },
+            //new ColumnDescriptor() { ID = "ProductOnHand", PropertyName = "ProductOnHand", FriendlyName = "Qty", NavigationProperty = "StoreProduct" },
 
             //new ColumnDescriptor() { ID = "ClientID", PropertyName = "ClientID", FriendlyName = "Client ID" },
             //new ColumnDescriptor() { ID = "ImmigrationStatus", PropertyName = "ImmigrationStatus.Desc1", FriendlyName = "Immigration Status" },
@@ -45,7 +219,11 @@
         };
 
         SelectedColumns = AvailableColumns.ToList();
+    }
 
+    //Generate Report
+    protected IQueryable GenerateReport()
+    {
         var navigationProperities = SelectedColumns
             .Where(c => c.NavigationProperty.HasValue())
             .Select(c => c.NavigationProperty)
@@ -94,11 +272,13 @@
 
         string s1 = "x => new {" + cols + "}";
 
-        var q1 = devContext.Store.Select(s1);
+        var q1 = devContext.Store
+        //.Where(x => x.StoreNumber == "001")
+        .Select(s1);
 
 
         //begin flattening loop
-        
+
         foreach(var prop in navigationProperities)
         {
             string topColsTemp = "";
@@ -128,33 +308,24 @@
             topCols += topColsTemp;
         }
 
-        
+        //Get all columns for final query.
+        string allCols = topCols.Replace("x.", "");
 
-        //await Test();
-    }
 
-    private async Task Test()
-    {
-
-        //Stores = await devContext.Store.ToArrayAsync();
-
+        //Set Config for final query.
         var config = new ParsingConfig { AllowNewToEvaluateAnyType = true };
 
-        var select1 = await devContext.Store
-        .Select(x => new { x.StoreNumber, x.StoreName, x.Province, x.StoreEmployee })
-        .SelectMany(x => x.StoreEmployee.DefaultIfEmpty())
-        .ToListAsync();
+        //Define selector for final query.
+        var selector = $"new {typeof(Report).FullName} {{" + allCols + $"}}";
+        //var selector = $"new {typeof(Report).FullName} {{ StoreNumber, StoreName, Province, FirstName, LastName, Phone, ProductDesc}}";
 
+        //Define final query and return to Grid OnRead Method.
+        var fQuery = q1.Select(config, selector);
 
-        //1. get all top level fields
-        //   get all 1 to 1 fields
-        //   get all collections.
-
-        JsRuntime.InvokeVoidAsync("alert", "Warning!");
-
-        //bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?"); // Confirm
-        //string prompted = await JsRuntime.InvokeAsync<string>("prompt", "Take some input:"); // Prompt
+        return fQuery;
     }
+
+
 
 
     public class ColumnDescriptor
@@ -167,5 +338,19 @@
 
         public ColumnDescriptor()
         {}
+    }
+
+    public class Report
+    {
+        
+        public string StoreNumber { get; set; }
+        public string StoreName { get; set; }
+        public string Province { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Phone { get; set; }
+        public string ProductDesc { get; set; }
+        //public double ProductPrice { get; set; }
+        //public int ProductOnHand { get; set; }
     }
 }
